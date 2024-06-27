@@ -19,6 +19,16 @@ class CardDeck(cardRanks: List<Any>, cardSuits: List<String>) {
         }
     }
 
+    fun reset() {
+        deck.clear()
+        for (suit in cardSuits) {
+            for (rank in cardRanks) {
+                deck.add("$rank$suit")
+            }
+        }
+        println("Card deck is reset.")
+    }
+
     fun shuffleDeck() {
         for ((deckIndex, card) in deck.shuffled().withIndex()) {
             deck[deckIndex] = card
@@ -31,7 +41,7 @@ class CardDeck(cardRanks: List<Any>, cardSuits: List<String>) {
         val cardsToGet = readln().toIntOrNull() ?: -1
         if ((cardsToGet > 0) && (cardsToGet < 53)) {
             if (cardsToGet > deck.size) {
-                println("The remaining cars are insufficient to meet the request.")
+                println("The remaining cards are insufficient to meet the request.")
             } else {
                 var cardsInHand = deck.take(cardsToGet)
                 deck.removeAll(deck.take(cardsToGet))
@@ -83,7 +93,7 @@ class GameHandler() {
         println("Choose an action (reset, shuffle, get, exit):")
         val playerChoice = readln()
         if (playerChoice == "reset") {
-
+            deck.reset()
         } else if (playerChoice == "shuffle") {
             deck.shuffleDeck()
         } else if (playerChoice == "get") {
@@ -93,11 +103,12 @@ class GameHandler() {
         } else if (playerChoice == "look") {
             deck.displayCardsInDeck()
         } else {
-            println("Wrong action")
+            println("Wrong action.")
         }
     }
 
     private fun exitGame(): Boolean {
+        println("Bye")
         return true
     }
 }
