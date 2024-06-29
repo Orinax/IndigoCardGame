@@ -38,7 +38,7 @@ class CardDeck(cardRanks: List<Any>, cardSuits: List<String>) {
         for ((deckIndex, card) in cardsInDeck.shuffled().withIndex()) {
             cardsInDeck[deckIndex] = card
         }
-        println("Card deck is shuffled.")
+        // println("Card deck is shuffled.")
     }
 
     /** Remove a number of cards from the deck and return a list of all cards that have been removed from the deck. */
@@ -167,7 +167,7 @@ class GameHandler() {
     }
 
     /** Display all cards for any set of cards. */
-    fun displayCards(cards: MutableList<String>) {
+    private fun displayCards(cards: MutableList<String>) {
         for (card in cards) {
             print("$card ")
         }
@@ -193,6 +193,28 @@ class GameHandler() {
         println()
     }
 
+    /** Turn pattern to use when playerOne is the first player. */
+    fun playerOneFirst(gameHandler: GameHandler, playerOne: Player, playerTwo: Player, table: Table) {
+        gameHandler.announceCardsOnTable(table)
+        playerOne.checkCardsInHand()
+        val exitNow = playerOne.playACard(table, gameHandler)
+        println()
+        if (!exitNow) {  // If false, gameplay will continue. If true, gameplay will end now.
+            gameHandler.announceCardsOnTable(table)
+            playerTwo.playACard(table, gameHandler)
+        }
+    }
+
+
+    /** Turn pattern to use when playerTwo is the first player. */
+    fun playerTwoFirst(gameHandler: GameHandler, playerOne: Player, playerTwo: Player, table: Table) {
+        gameHandler.announceCardsOnTable(table)
+        playerTwo.playACard(table, gameHandler)
+        gameHandler.announceCardsOnTable(table)
+        playerOne.checkCardsInHand()
+        playerOne.playACard(table, gameHandler)
+        println()
+    }
 }
 
 /** A class used to manage player cards and actions. */
@@ -219,9 +241,13 @@ class Player(var playerType: Boolean) {
         println()
     }
 
-    /** Remove a card from the player's hand and add it to the set of cards on the table. */
-    fun playACard(table: Table, gameHandler: GameHandler) {
+    /** Remove a card from the player's hand and add it to the set of cards on the table.
+     * This function returns an exitNow Boolean flag. Returning true will cause the program to end.
+     * Returning false will allow the program to continue running.
+     * */
+    fun playACard(table: Table, gameHandler: GameHandler): Boolean {
         var cardPlayed = false
+        var exitNow = false
 
         if (isHumanPlayer) {
             while (!cardPlayed) {
@@ -229,13 +255,15 @@ class Player(var playerType: Boolean) {
                 val playerInput = readln()
                 if (playerInput == "exit") {
                     gameHandler.keepPlaying = gameHandler.exitGame()
-                    break
+                    exitNow = true
+                    return exitNow
                 } else {
                     val cardChoice = playerInput.toIntOrNull() ?: -1
                     if ((cardChoice > 0) && (cardChoice <= cardsInHand.size)) {
                         table.cardsOnTable.add(cardsInHand.elementAt(cardChoice - 1))
                         cardsInHand.removeAt(cardChoice - 1)
                         cardPlayed = true
+                        return exitNow
                     }
                 }
             }
@@ -245,6 +273,7 @@ class Player(var playerType: Boolean) {
             println("Computer plays ${table.cardsOnTable.last()}")
         }
         println()
+        return exitNow
     }
 }
 
@@ -263,34 +292,33 @@ fun main() {
 
     gameHandler.printGameTitle()
     gameHandler.decideFirstPlayer(playerOne, playerTwo)
-    println("P1 first: ${playerOne.isFirstPlayer}, P2 first: ${playerTwo.isFirstPlayer}")
-    println("P1 human: ${playerOne.isHumanPlayer}, P2 human: ${playerTwo.isHumanPlayer}")
+    // println("P1 first: ${playerOne.isFirstPlayer}, P2 first: ${playerTwo.isFirstPlayer}")
+    // println("P1 human: ${playerOne.isHumanPlayer}, P2 human: ${playerTwo.isHumanPlayer}")
+    cardDeck.shuffleDeck()
     gameHandler.dealCards(cardDeck, table, playerOne, playerTwo)
     // gameHandler.displayActionMenu(cardDeck, table, playerOne, playerTwo)
     gameHandler.beginPlay(table)
 
-    if (playerTwo.isFirstPlayer) {
-        gameHandler.announceCardsOnTable(table)
-        playerTwo.playACard(table, gameHandler)
-    }
+
 
     while (!gameHandler.keepPlaying) {
+        if (playerOne.isFirstPlayer) {
+            gameHandler.playerOneFirst(gameHandler, playerOne, playerTwo, table)
+        } else {
+            gameHandler.playerTwoFirst(gameHandler, playerOne, playerTwo, table)
+        }
+
         if ((playerOne.cardsInHand.size == 0) && (playerTwo.cardsInHand.size == 0)) {
             if (cardDeck.cardsInDeck.size == 0) {
+                gameHandler.announceCardsOnTable(table)
                 gameHandler.keepPlaying = gameHandler.exitGame()
             } else {
                 gameHandler.dealCards(cardDeck, playerOne, playerTwo)
             }
-        } else {
-            gameHandler.announceCardsOnTable(table)
-            playerOne.checkCardsInHand()
-            playerOne.playACard(table, gameHandler)
-            if (gameHandler.keepPlaying) {
-                break
-            } else {
-                gameHandler.announceCardsOnTable(table)
-                playerTwo.playACard(table, gameHandler)
-            }
+        }
+
+        if (gameHandler.keepPlaying) {
+            break
         }
     }
 }
