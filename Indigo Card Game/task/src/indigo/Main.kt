@@ -193,6 +193,24 @@ class GameHandler() {
         println()
     }
 
+    /** Check the played card to see if matches either rank or suit of the top table card. */
+    private fun checkCard(table: Table): List<Boolean> {
+        val isMatch: Boolean
+        val isPoints: Boolean
+        val cardOnTopRank = table.cardsOnTable.elementAt(table.cardsOnTable.size - 2)[0]
+        val cardOnTopSuit = table.cardsOnTable.elementAt(table.cardsOnTable.size - 2)[1]
+        val cardJustPlayedRank = table.cardsOnTable.elementAt(table.cardsOnTable.size - 1)[0]
+        val cardJustPlayedSuit = table.cardsOnTable.elementAt(table.cardsOnTable.size - 1)[1]
+        if ((cardOnTopSuit == cardJustPlayedSuit) || (cardOnTopRank == cardJustPlayedRank)) {
+            isMatch = true
+            // return isMatch
+        } else {
+            isMatch = false
+            // return isMatch
+        }
+        if (())
+    }
+
     /** Turn pattern to use when playerOne is the first player. */
     fun playerOneFirst(gameHandler: GameHandler, playerOne: Player, playerTwo: Player, table: Table) {
         gameHandler.announceCardsOnTable(table)
@@ -200,8 +218,12 @@ class GameHandler() {
         val exitNow = playerOne.playACard(table, gameHandler)
         println()
         if (!exitNow) {  // If false, gameplay will continue. If true, gameplay will end now.
+            var cardMatch = checkCard(table)
+            println("Does Player's card match?: $cardMatch")
             gameHandler.announceCardsOnTable(table)
             playerTwo.playACard(table, gameHandler)
+            cardMatch = checkCard(table)
+            println("Does Computer's card match?: $cardMatch")
         }
     }
 
@@ -222,6 +244,8 @@ class Player(var playerType: Boolean) {
     var cardsInHand = mutableListOf<String>()
     var isFirstPlayer = true
     var isHumanPlayer: Boolean
+    var score = 0
+    var cardsWon = 0
 
     init {
         if (playerType) {
@@ -274,6 +298,10 @@ class Player(var playerType: Boolean) {
         }
         println()
         return exitNow
+    }
+
+    fun earnPoints(player: Player, table: Table) {
+
     }
 }
 
