@@ -178,7 +178,6 @@ class GameHandler() {
     fun announceCardsOnTable(table: Table) {
         if (table.cardsOnTable.size == 0) {
             println("No cards on the table")
-            println()
         } else {
             print("${table.cardsOnTable.size} cards on the table, and the top card is ${table.cardsOnTable.last()}")
             println()
@@ -189,6 +188,7 @@ class GameHandler() {
     fun announceCurrentScore(playerOne: Player, playerTwo: Player) {
         println("Score: Player ${playerOne.score} - Computer ${playerTwo.score}")
         println("Cards: Player ${playerOne.cardsWon} - Computer ${playerTwo.cardsWon}")
+        println()
     }
 
     /** Check the played card to see if matches either rank or suit of the top table card.
@@ -328,6 +328,32 @@ class Player(playerType: Boolean) {
         return multipleSuits
     }
 
+    /** Identify all cards where the suit is the same as the suit of the top card on the table
+     * and return a list of all cards with the same suit as the top card. */
+    fun identifySameSuits(topCard: String): List<String> {
+        val sameSuits = mutableListOf<String>()
+
+        for ((cardIndex, card) in cardsInHand.withIndex()) {
+            if (card[card.lastIndex] == topCard[topCard.lastIndex]) {
+                sameSuits.add("$card $cardIndex")
+            }
+        }
+        return sameSuits
+    }
+
+    /** Identify all cards where the rank is the same as the rank of the top card on the table
+     * and return a list of all cards with the same rank as the top card. */
+    fun identifySameRanks(topCard: String): List<String> {
+        val sameRanks = mutableListOf<String>()
+
+        for ((cardIndex, card) in cardsInHand.withIndex()) {
+            if (card[0] == topCard[0]) {
+                sameRanks.add("$card $cardIndex")
+            }
+        }
+        return sameRanks
+    }
+
     /** Identify all cards where there is more than one of a suit and return a list of all multiple suit cards. */
     fun identifyMultipleRanks(): List<String> {
         val multipleRanks = mutableListOf<String>()
@@ -368,70 +394,98 @@ class Player(playerType: Boolean) {
         return candidateCards
     }
 
+    /** Handles the process of adding a card to the table from a player's hand,
+     * then removes the card from player's hand. Takes String argument. */
+    fun fromHandToTable(card: String, table: Table) {
+        val randomIndex: Int = card[card.length - 1].digitToInt()
+        table.cardsOnTable.add(cardsInHand.elementAt(randomIndex))
+        cardsInHand.removeAt(randomIndex)
+    }
+
+    /** Handles the process of adding a card to the table from a player's hand,
+     * then removes the card from player's hand. Takes Int argument. */
+    fun fromHandToTable(cardIndex: Int, table: Table) {
+        table.cardsOnTable.add(cardsInHand.elementAt(cardIndex))
+        cardsInHand.removeAt(cardIndex)
+    }
+
     /** Steps that the computer player will go through before playing a card. */
-    fun computerPlayACard(table: Table, gameHandler: GameHandler) {
+    fun computerPlayACard(table: Table) {
         val candidateCards = identifyCandidateCards(table)
         val multipleSuits = identifyMultipleSuits()
         val multipleRanks = identifyMultipleRanks()
         var randomIndex: Int
         var randomCard: String
-        println("Candidate cards: ${candidateCards.joinToString(" ")}")
-        println("Multiple suits: ${multipleSuits.joinToString(" ")}")
-        println("Multiple ranks: ${multipleRanks.joinToString(" ")}")
+        var candidateCard: String
+//        println("Candidate cards: ${candidateCards.joinToString(" ")}")
+//        println("Multiple suits: ${multipleSuits.joinToString(" ")}")
+//        println("Multiple ranks: ${multipleRanks.joinToString(" ")}")
 
         if ((table.cardsOnTable.size == 0) && (multipleSuits.isNotEmpty())) {
             // If no cards on table and cards in hand have same suit, throw one at random.
-            randomIndex = Random.nextInt(multipleSuits.size)
-            randomCard = multipleSuits[randomIndex]
-            table.cardsOnTable.add(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
-            cardsInHand.remove(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+            randomIndex = Random.nextInt(multipleSuits.size) // A random Int that points to a multiple suit card.
+            randomCard = multipleSuits[randomIndex] // The card string at the randomIndex (rank|suit| |index)
+            fromHandToTable(randomCard, table)
         } else if ((table.cardsOnTable.size == 0) && (multipleSuits.isEmpty()) && (multipleRanks.isNotEmpty())) {
             // If no cards on table and cards in hand have no same suit, but do have same rank,
             // throw a same rank card at random.
             randomIndex = Random.nextInt(multipleRanks.size)
             randomCard = multipleRanks[randomIndex]
-            table.cardsOnTable.add(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
-            cardsInHand.remove(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+            fromHandToTable(randomCard, table)
         } else if ((table.cardsOnTable.size == 0) && (multipleSuits.isEmpty()) && (multipleRanks.isEmpty())) {
             // If no cards on table and no cards of same suit or rank in hand, throw any card at random.
             randomIndex = Random.nextInt(cardsInHand.size)
-            table.cardsOnTable.add(cardsInHand.elementAt(randomIndex))
-            cardsInHand.remove(cardsInHand.elementAt(randomIndex))
+            fromHandToTable(randomIndex, table)
         } else if ((table.cardsOnTable.size > 0) && (cardsInHand.size == 1)) {
             // If only one card in hand, throw that card.
-            table.cardsOnTable.add(cardsInHand.elementAt(0))
-            cardsInHand.removeAt(0)
+            fromHandToTable(0, table)
         } else if ((table.cardsOnTable.size > 0) && (candidateCards.isEmpty()) && (multipleSuits.isNotEmpty())) {
             // If there are cards on the table, no candidate cards, but do have cards of the same suit,
             // throw one random card of the same suit.
             randomIndex = Random.nextInt(multipleSuits.size)
             randomCard = multipleSuits[randomIndex]
-            table.cardsOnTable.add(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
-            cardsInHand.remove(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+            fromHandToTable(randomCard, table)
         } else if ((table.cardsOnTable.size > 0) && (candidateCards.isEmpty()) && (multipleSuits.isEmpty())
             && (multipleRanks.isNotEmpty())) {
             // If there are cards on the table, no candidate cards, no cards of same suit, but do have same rank.
             // throw one of the same rank cards at random.
             randomIndex = Random.nextInt(multipleRanks.size)
             randomCard = multipleRanks[randomIndex]
-            table.cardsOnTable.add(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
-            cardsInHand.remove(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+            fromHandToTable(randomCard, table)
         } else if ((table.cardsOnTable.size > 0) && (candidateCards.isEmpty()) && (multipleSuits.isEmpty())
             && (multipleRanks.isEmpty())) {
             // If there are cards on the table, no candidate cards, no same suit, no same rank,
             // throw any card at random.
             randomIndex = Random.nextInt(cardsInHand.size)
-            table.cardsOnTable.add(cardsInHand.elementAt(randomIndex))
-            cardsInHand.remove(cardsInHand.elementAt(randomIndex))
+            fromHandToTable(randomIndex, table)
         } else if ((table.cardsOnTable.size > 0) && (cardsInHand.size > 1) && (candidateCards.size == 1)) {
             // If more than one card in hand and has just one candidate card, throw the candidate card.
-            table.cardsOnTable.add(cardsInHand.elementAt(candidateCards[0].last().digitToInt()))
-            cardsInHand.removeAt(0)
-        } else if ((table.cardsOnTable.size > 0) && (candidateCards.size >= 1) && (multipleSuits.isNotEmpty())) {
+            candidateCard = candidateCards[0]
+            fromHandToTable(candidateCard, table)
+        } else if ((table.cardsOnTable.size > 0) && (candidateCards.size > 1) && (multipleSuits.isNotEmpty())) {
             // If two or more candidate cards with the same suit as the top card, throw one at random.
-        } else {
-            table.cardsOnTable.add(cardsInHand.elementAt(0))
-            cardsInHand.removeAt(0)
+            val topCard = table.cardsOnTable.last()
+            val sameSuits = identifySameSuits(topCard)
+            val sameRanks = identifySameRanks(topCard)
+            // println("Same suits: ${sameSuits.joinToString(" ")}")
+            // println("Same ranks: ${sameRanks.joinToString(" ")}")
+
+            if (sameSuits.size >= 2) {
+                randomIndex = Random.nextInt(sameSuits.size)
+                randomCard = sameSuits[randomIndex]
+                fromHandToTable(randomCard, table)
+            } else if (sameRanks.size >= 2) {
+                randomIndex = Random.nextInt(sameRanks.size)
+                randomCard = sameRanks[randomIndex]
+                fromHandToTable(randomCard, table)
+            } else {
+                randomIndex = Random.nextInt(candidateCards.size)
+                randomCard = candidateCards[randomIndex]
+                fromHandToTable(randomCard, table)
+            }
+        }
+        else {
+            fromHandToTable(0, table)
         }
     }
 
@@ -464,12 +518,11 @@ class Player(playerType: Boolean) {
         } else {
             // Refactor the two lines below to allow for a more intelligent computer player.
             // Create a new function for the computer player and then call it here.
-            computerPlayACard(table, gameHandler)
+            computerPlayACard(table)
             // table.cardsOnTable.add(cardsInHand.elementAt(0))
             // cardsInHand.removeAt(0)
             println("Computer plays ${table.cardsOnTable.last()}")
         }
-        println()
         return exitNow
     }
 
