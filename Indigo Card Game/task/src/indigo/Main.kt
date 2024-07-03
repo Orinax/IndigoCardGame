@@ -1,5 +1,7 @@
 package indigo
 
+import kotlin.random.Random
+
 const val DIAMONDS = "\u2666"
 const val HEARTS = "\u2665"
 const val SPADES = "\u2660"
@@ -176,6 +178,7 @@ class GameHandler() {
     fun announceCardsOnTable(table: Table) {
         if (table.cardsOnTable.size == 0) {
             println("No cards on the table")
+            println()
         } else {
             print("${table.cardsOnTable.size} cards on the table, and the top card is ${table.cardsOnTable.last()}")
             println()
@@ -188,8 +191,9 @@ class GameHandler() {
         println("Cards: Player ${playerOne.cardsWon} - Computer ${playerTwo.cardsWon}")
     }
 
-    /** Check the played card to see if matches either rank or suit of the top table card. */
-    private fun checkCardMatch(table: Table): Boolean {
+    /** Check the played card to see if matches either rank or suit of the top table card.
+     * Return a Boolean value: true = card is a match, false = card is not a match. */
+    fun checkCardMatch(table: Table): Boolean {
         val isMatch: Boolean
         if (table.cardsOnTable.size > 1) {
             val cardOnTopRank = table.cardsOnTable.elementAt(table.cardsOnTable.size - 2)[0]
@@ -249,12 +253,13 @@ class GameHandler() {
     /** Turn pattern to use when playerOne is the first player. */
     fun playerOneFirst(gameHandler: GameHandler, playerOne: Player, playerTwo: Player, table: Table) {
         gameHandler.announceCardsOnTable(table)
-        playerOne.checkCardsInHand()
+        playerOne.listCardsInHand()
         val exitNow = playerOne.playACard(table, gameHandler)
         println()
         if (!exitNow) {  // If false, gameplay will continue. If true, gameplay will end now.
             handlePlayerTurn("Player", gameHandler, playerOne, playerTwo, table)
             gameHandler.announceCardsOnTable(table)
+            playerTwo.listCardsInHand()
             playerTwo.playACard(table, gameHandler)
             handlePlayerTurn("Computer", gameHandler, playerOne, playerTwo, table)
         }
@@ -263,10 +268,11 @@ class GameHandler() {
     /** Turn pattern to use when playerTwo is the first player. */
     fun playerTwoFirst(gameHandler: GameHandler, playerOne: Player, playerTwo: Player, table: Table) {
         gameHandler.announceCardsOnTable(table)
+        playerTwo.listCardsInHand()
         playerTwo.playACard(table, gameHandler)
         handlePlayerTurn("Computer", gameHandler, playerOne, playerTwo, table)
         gameHandler.announceCardsOnTable(table)
-        playerOne.checkCardsInHand()
+        playerOne.listCardsInHand()
         playerOne.playACard(table, gameHandler)
         handlePlayerTurn("Player", gameHandler, playerOne, playerTwo, table)
         println()
@@ -293,13 +299,140 @@ class Player(playerType: Boolean) {
     }
 
     /** Display a numbered list of the current set of cards in a player's hand. */
-    fun checkCardsInHand() {
-        var cardNumber = 0
-        print("Cards in hand: ")
-        for (card in cardsInHand) {
-            print("${++cardNumber})$card ")
+    fun listCardsInHand() {
+        if (isHumanPlayer) {
+            var cardNumber = 0
+            print("Cards in hand: ")
+            for (card in cardsInHand) {
+                print("${++cardNumber})$card ")
+            }
+            println()
+        } else {
+            println(cardsInHand.joinToString(" "))
         }
-        println()
+
+    }
+
+    /** Identify all cards where there is more than one of a suit and return a list of all multiple suit cards. */
+    fun identifyMultipleSuits(): List<String> {
+        val multipleSuits = mutableListOf<String>()
+
+        for ((cardIndex, card) in cardsInHand.withIndex()) {
+            for ((otherCardIndex, otherCard) in cardsInHand.withIndex()) {
+                if ((card[card.lastIndex] == otherCard[otherCard.lastIndex]) && (card !in multipleSuits)
+                    && (otherCard !in multipleSuits) && (cardIndex != otherCardIndex)) {
+                    multipleSuits.add("$otherCard $otherCardIndex")
+                }
+            }
+        }
+        return multipleSuits
+    }
+
+    /** Identify all cards where there is more than one of a suit and return a list of all multiple suit cards. */
+    fun identifyMultipleRanks(): List<String> {
+        val multipleRanks = mutableListOf<String>()
+
+        for ((cardIndex, card) in cardsInHand.withIndex()) {
+            for ((otherCardIndex, otherCard) in cardsInHand.withIndex()) {
+                if ((card[0] == otherCard[0]) && (card !in multipleRanks)
+                    && (otherCard !in multipleRanks) && (cardIndex != otherCardIndex)) {
+                    multipleRanks.add("$otherCard $otherCardIndex")
+                }
+            }
+        }
+        return multipleRanks
+    }
+
+    /** Identify all candidate cards for the computer player and return a list of candidate cards. */
+    fun identifyCandidateCards(table: Table): List<String> {
+        val candidateCards = mutableListOf<String>()
+        if (table.cardsOnTable.size > 0) {
+            var cardOnTopSuit = table.cardsOnTable.elementAt(table.cardsOnTable.size - 1)[1]
+            val cardOnTopRank = table.cardsOnTable.elementAt(table.cardsOnTable.size - 1)[0]
+            if (cardOnTopSuit == '0') {  // The suit for cards of rank 10 will be at index 2, not 1.
+                cardOnTopSuit = table.cardsOnTable.elementAt(table.cardsOnTable.size - 1)[2]
+            }
+
+            for ((cardIndex, card) in cardsInHand.withIndex()) {
+                if (card[1] == '0') {
+                    if (cardOnTopSuit == card[2]) {
+                        candidateCards.add("$card $cardIndex")
+                    }
+                } else if (card[1] == cardOnTopSuit) {
+                    candidateCards.add("$card $cardIndex")
+                } else if (card[0] == cardOnTopRank) {
+                    candidateCards.add("$card $cardIndex")
+                }
+            }
+        }
+        return candidateCards
+    }
+
+    /** Steps that the computer player will go through before playing a card. */
+    fun computerPlayACard(table: Table, gameHandler: GameHandler) {
+        val candidateCards = identifyCandidateCards(table)
+        val multipleSuits = identifyMultipleSuits()
+        val multipleRanks = identifyMultipleRanks()
+        var randomIndex: Int
+        var randomCard: String
+        println("Candidate cards: ${candidateCards.joinToString(" ")}")
+        println("Multiple suits: ${multipleSuits.joinToString(" ")}")
+        println("Multiple ranks: ${multipleRanks.joinToString(" ")}")
+
+        if ((table.cardsOnTable.size == 0) && (multipleSuits.isNotEmpty())) {
+            // If no cards on table and cards in hand have same suit, throw one at random.
+            randomIndex = Random.nextInt(multipleSuits.size)
+            randomCard = multipleSuits[randomIndex]
+            table.cardsOnTable.add(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+            cardsInHand.remove(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+        } else if ((table.cardsOnTable.size == 0) && (multipleSuits.isEmpty()) && (multipleRanks.isNotEmpty())) {
+            // If no cards on table and cards in hand have no same suit, but do have same rank,
+            // throw a same rank card at random.
+            randomIndex = Random.nextInt(multipleRanks.size)
+            randomCard = multipleRanks[randomIndex]
+            table.cardsOnTable.add(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+            cardsInHand.remove(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+        } else if ((table.cardsOnTable.size == 0) && (multipleSuits.isEmpty()) && (multipleRanks.isEmpty())) {
+            // If no cards on table and no cards of same suit or rank in hand, throw any card at random.
+            randomIndex = Random.nextInt(cardsInHand.size)
+            table.cardsOnTable.add(cardsInHand.elementAt(randomIndex))
+            cardsInHand.remove(cardsInHand.elementAt(randomIndex))
+        } else if ((table.cardsOnTable.size > 0) && (cardsInHand.size == 1)) {
+            // If only one card in hand, throw that card.
+            table.cardsOnTable.add(cardsInHand.elementAt(0))
+            cardsInHand.removeAt(0)
+        } else if ((table.cardsOnTable.size > 0) && (candidateCards.isEmpty()) && (multipleSuits.isNotEmpty())) {
+            // If there are cards on the table, no candidate cards, but do have cards of the same suit,
+            // throw one random card of the same suit.
+            randomIndex = Random.nextInt(multipleSuits.size)
+            randomCard = multipleSuits[randomIndex]
+            table.cardsOnTable.add(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+            cardsInHand.remove(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+        } else if ((table.cardsOnTable.size > 0) && (candidateCards.isEmpty()) && (multipleSuits.isEmpty())
+            && (multipleRanks.isNotEmpty())) {
+            // If there are cards on the table, no candidate cards, no cards of same suit, but do have same rank.
+            // throw one of the same rank cards at random.
+            randomIndex = Random.nextInt(multipleRanks.size)
+            randomCard = multipleRanks[randomIndex]
+            table.cardsOnTable.add(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+            cardsInHand.remove(cardsInHand.elementAt(randomCard[randomCard.length - 1].toString().toInt()))
+        } else if ((table.cardsOnTable.size > 0) && (candidateCards.isEmpty()) && (multipleSuits.isEmpty())
+            && (multipleRanks.isEmpty())) {
+            // If there are cards on the table, no candidate cards, no same suit, no same rank,
+            // throw any card at random.
+            randomIndex = Random.nextInt(cardsInHand.size)
+            table.cardsOnTable.add(cardsInHand.elementAt(randomIndex))
+            cardsInHand.remove(cardsInHand.elementAt(randomIndex))
+        } else if ((table.cardsOnTable.size > 0) && (cardsInHand.size > 1) && (candidateCards.size == 1)) {
+            // If more than one card in hand and has just one candidate card, throw the candidate card.
+            table.cardsOnTable.add(cardsInHand.elementAt(candidateCards[0].last().digitToInt()))
+            cardsInHand.removeAt(0)
+        } else if ((table.cardsOnTable.size > 0) && (candidateCards.size >= 1) && (multipleSuits.isNotEmpty())) {
+            // If two or more candidate cards with the same suit as the top card, throw one at random.
+        } else {
+            table.cardsOnTable.add(cardsInHand.elementAt(0))
+            cardsInHand.removeAt(0)
+        }
     }
 
     /** Remove a card from the player's hand and add it to the set of cards on the table.
@@ -329,8 +462,11 @@ class Player(playerType: Boolean) {
                 }
             }
         } else {
-            table.cardsOnTable.add(cardsInHand.elementAt(0))
-            cardsInHand.removeAt(0)
+            // Refactor the two lines below to allow for a more intelligent computer player.
+            // Create a new function for the computer player and then call it here.
+            computerPlayACard(table, gameHandler)
+            // table.cardsOnTable.add(cardsInHand.elementAt(0))
+            // cardsInHand.removeAt(0)
             println("Computer plays ${table.cardsOnTable.last()}")
         }
         println()
